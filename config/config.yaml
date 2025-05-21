@@ -1,0 +1,35 @@
+# Configuration du dashboard
+dashboard:
+  title: "ModSec AI Dashboard"
+  theme: "light"
+  refresh_interval: 60  # secondes
+
+modsecurity:
+  log_path: "logs/modsec_audit.log"
+
+# Configuration du modèle pour dashboard API
+model:
+  vectorizer: {}
+  detector: {}
+
+# Configuration des modèles
+models:
+  default_model: "isolation_forest"
+  update_interval: 3600  # secondes
+
+# Configuration des alertes
+alerts:
+  threshold: 0.8
+  notification_type: "email"
+  email:
+    smtp_server: "smtp.example.com"
+    smtp_port: 587
+    smtp_user: "test@example.com"
+    smtp_password: "password"
+    recipient: "admin@example.com"
+
+# Configuration de l'interface
+gui:
+  window_size: [1024, 768]
+  show_plots: true
+  auto_refresh: true 

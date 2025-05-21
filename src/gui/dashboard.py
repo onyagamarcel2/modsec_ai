@@ -1,68 +1,73 @@
+"""
+Interface graphique principale du dashboard.
+"""
+
+import sys
+import logging
+from datetime import datetime
+from typing import Dict, List, Optional
 from PyQt5.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QTabWidget, QLabel, QPushButton, QStatusBar
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QTabWidget, QLabel, QPushButton, QComboBox, QMessageBox
 )
-from PyQt5.QtCore import Qt
-from .modsec_rules_gui import RulesGUI
-from .validation_gui import ValidationGUI
+from PyQt5.QtCore import Qt, QTimer
+
+from .modsec_rules_gui import ModSecRulesGUI
+from src.modsec.rule_manager import ModSecRuleManager
+
+logger = logging.getLogger(__name__)
 
 class Dashboard(QMainWindow):
-    """Tableau de bord principal de l'application."""
+    """Interface graphique principale."""
     
-    def __init__(self):
-        """Initialise le tableau de bord."""
+    def __init__(self, rule_manager: ModSecRuleManager):
+        """Initialise le dashboard."""
         super().__init__()
-        self.setWindowTitle("ModSec AI Dashboard")
-        self.setMinimumSize(1200, 800)
         
-        # Créer le widget central
+        self.rule_manager = rule_manager
+        
+        # Configuration de la fenêtre
+        self.setWindowTitle("ModSec AI Dashboard")
+        self.setGeometry(100, 100, 1200, 800)
+        
+        # Créer l'interface
+        self._create_ui()
+        
+    def _create_ui(self):
+        """Crée l'interface utilisateur."""
+        # Widget central
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
-        # Créer le layout principal
-        layout = QVBoxLayout(central_widget)
+        # Layout principal
+        main_layout = QVBoxLayout(central_widget)
         
-        # Créer l'en-tête
-        header = QHBoxLayout()
-        title = QLabel("ModSec AI Dashboard")
-        title.setStyleSheet("font-size: 24px; font-weight: bold;")
-        header.addWidget(title)
-        header.addStretch()
-        
-        # Ajouter l'en-tête au layout principal
-        layout.addLayout(header)
-        
-        # Créer les onglets
+        # Onglets
         tabs = QTabWidget()
         
-        # Onglet des règles
-        self.rules_gui = RulesGUI()
-        tabs.addTab(self.rules_gui, "Règles")
+        # Onglet règles
+        rules_tab = ModSecRulesGUI(self.rule_manager)
+        tabs.addTab(rules_tab, "Règles")
         
-        # Onglet de validation
-        self.validation_gui = ValidationGUI()
-        tabs.addTab(self.validation_gui, "Validation")
+        # Onglet statistiques
+        stats_tab = QWidget()
+        tabs.addTab(stats_tab, "Statistiques")
         
-        # Onglet des anomalies
-        self.anomaly_gui = QWidget()
-        anomaly_layout = QVBoxLayout(self.anomaly_gui)
-        anomaly_layout.addWidget(QLabel("Interface des anomalies à venir..."))
-        tabs.addTab(self.anomaly_gui, "Anomalies")
+        # Onglet alertes
+        alerts_tab = QWidget()
+        tabs.addTab(alerts_tab, "Alertes")
         
-        # Ajouter les onglets au layout principal
-        layout.addWidget(tabs)
+        main_layout.addWidget(tabs)
         
-        # Créer la barre de statut
-        self.statusBar = QStatusBar()
-        self.setStatusBar(self.statusBar)
-        self.statusBar.showMessage("Prêt")
-        
-    def show_status(self, message: str, timeout: int = 0):
-        """
-        Affiche un message dans la barre de statut.
-        
-        Args:
-            message: Message à afficher
-            timeout: Durée d'affichage en millisecondes (0 = permanent)
-        """
-        self.statusBar.showMessage(message, timeout) 
+def main():
+    """Point d'entrée de l'application."""
+    app = QApplication(sys.argv)
+    
+    # Créer le gestionnaire de règles
+    rule_manager = ModSecRuleManager()
+    
+    # Créer et afficher le dashboard
+    dashboard = Dashboard(rule_manager)
+    dashboard.show()
+    
+    sys.exit(app.exec_()) 

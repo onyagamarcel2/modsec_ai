@@ -1,0 +1,65 @@
+[MASTER]
+# Python version
+python-version=3.8
+
+# Liste des modules à ignorer
+ignore=CVS,venv
+
+# Utiliser plusieurs processus pour l'analyse
+jobs=0
+
+# Charger les plugins
+load-plugins=
+
+[MESSAGES CONTROL]
+# Désactiver les avertissements spécifiques
+disable=C0111,  # missing-docstring
+        C0103,  # invalid-name
+        C0303,  # trailing-whitespace
+        W0311,  # bad-indentation
+        R0903,  # too-few-public-methods
+        R0913,  # too-many-arguments
+        R0914,  # too-many-locals
+        R0915   # too-many-statements
+
+[REPORTS]
+# Format de sortie
+output-format=text
+
+# Inclure les symboles dans le rapport
+include-symbols=yes
+
+# Inclure les messages dans le rapport
+include-messages=yes
+
+[FORMAT]
+# Longueur maximale des lignes
+max-line-length=100
+
+# Style de formatage
+indent-string='    '
+
+[BASIC]
+# Bonnes pratiques de nommage
+good-names=i,j,k,ex,Run,_,id,df
+
+# Mauvaises pratiques de nommage
+bad-names=foo,bar,baz,toto,tutu,tata
+
+[TYPECHECK]
+# Ignorer les imports manquants
+ignored-modules=numpy,tensorflow,torch,transformers
+
+# Ignorer les classes manquantes
+ignored-classes=numpy,tensorflow,torch,transformers
+
+[SIMILARITIES]
+# Seuil de similarité pour la détection de code dupliqué
+min-similarity-lines=4
+
+# Ignorer les imports dans la détection de similarité
+ignore-imports=yes
+
+[MISCELLANEOUS]
+# Notes
+notes=FIXME,TODO,XXX 

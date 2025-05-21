@@ -151,7 +151,7 @@ class GUIDataManager:
             
             for filename in os.listdir(self.output_dir):
                 file_path = os.path.join(self.output_dir, filename)
-                file_time = datetime.fromtimestamp(os.path.getctime(file_path))
+                file_time = datetime.fromtimestamp(os.path.getmtime(file_path))
                 
                 if current_time - file_time > max_age:
                     os.remove(file_path)

@@ -1,3 +1,7 @@
+"""
+API du dashboard pour Streamlit.
+"""
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -5,6 +9,8 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import yaml
 import logging
+import os
+from pathlib import Path
 
 from ..data.log_loader import ModSecLogLoader
 from ..data.preprocessor import ModSecPreprocessor
@@ -13,25 +19,74 @@ from ..models.anomaly_detector import AnomalyDetector
 
 logger = logging.getLogger(__name__)
 
-# Configuration
 def load_config():
-    with open("config/config.yaml", 'r') as f:
+    """Charge la configuration depuis le fichier YAML."""
+    config_path = Path(__file__).parent.parent.parent / "config" / "config.yaml"
+    with open(config_path, 'r') as f:
         return yaml.safe_load(f)
 
-# Initialisation
+# Charger la configuration
 config = load_config()
+
+# Configuration de la page
+st.set_page_config(
+    page_title=config['dashboard']['title'],
+    layout="wide"
+)
+
+# Titre
+st.title(config['dashboard']['title'])
+
+# Sidebar
+with st.sidebar:
+    st.header("Configuration")
+    
+    # Sélection du modèle
+    model = st.selectbox(
+        "Modèle",
+        options=["isolation_forest", "local_outlier_factor", "elliptic_envelope", "one_class_svm"],
+        index=0
+    )
+    
+    # Seuil d'anomalie
+    threshold = st.slider(
+        "Seuil d'anomalie",
+        min_value=0.0,
+        max_value=1.0,
+        value=config['alerts']['threshold'],
+        step=0.1
+    )
+    
+    # Intervalle de rafraîchissement
+    refresh = st.number_input(
+        "Intervalle de rafraîchissement (secondes)",
+        min_value=10,
+        max_value=3600,
+        value=config['dashboard']['refresh_interval']
+    )
+
+# Onglets
+tab1, tab2, tab3 = st.tabs(["Règles", "Statistiques", "Alertes"])
+
+with tab1:
+    st.header("Règles ModSecurity")
+    # TODO: Implémenter l'affichage des règles
+
+with tab2:
+    st.header("Statistiques")
+    # TODO: Implémenter l'affichage des statistiques
+
+with tab3:
+    st.header("Alertes")
+    # TODO: Implémenter l'affichage des alertes
+
+# Initialisation
 log_loader = ModSecLogLoader(config['modsecurity']['log_path'])
 preprocessor = ModSecPreprocessor()
 vectorizer = LogVectorizer(**config['model']['vectorizer'])
 detector = AnomalyDetector(**config['model']['detector'])
 
 # Interface Streamlit
-st.set_page_config(
-    page_title="ModSec AI Dashboard",
-    page_icon="🔒",
-    layout="wide"
-)
-
 st.title("ModSec AI Dashboard")
 st.markdown("Dashboard de surveillance des anomalies ModSecurity")
 

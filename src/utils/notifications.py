@@ -40,19 +40,18 @@ class NotificationManager:
             subject (str): Sujet de la notification
             message (str): Contenu de la notification
             **kwargs: Arguments supplémentaires spécifiques au type de notification
+            
+        Raises:
+            ValueError: Si le type de notification est invalide ou si la configuration est manquante
         """
-        try:
-            if self.notification_type == 'email':
-                self._send_email(subject, message)
-            elif self.notification_type == 'slack':
-                self._send_slack(subject, message)
-            elif self.notification_type == 'webhook':
-                self._send_webhook(subject, message, **kwargs)
-            else:
-                logger.error("Unsupported notification type: %s", self.notification_type)
-                
-        except Exception as e:
-            logger.error("Error sending notification: %s", str(e))
+        if self.notification_type == 'email':
+            self._send_email(subject, message)
+        elif self.notification_type == 'slack':
+            self._send_slack(subject, message)
+        elif self.notification_type == 'webhook':
+            self._send_webhook(subject, message, **kwargs)
+        else:
+            raise ValueError(f"Unsupported notification type: {self.notification_type}")
     
     def _send_email(self, subject, message):
         """Envoie une notification par email."""

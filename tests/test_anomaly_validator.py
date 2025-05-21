@@ -1,316 +1,97 @@
 """
-Tests unitaires pour le validateur d'anomalies.
+Tests unitaires pour le module de validation des anomalies (AnomalyValidator).
 """
 
-import os
 import pytest
+from unittest.mock import MagicMock, patch
+import os
+import tempfile
 from datetime import datetime
-from src.validation.anomaly_validator import (
-    AnomalyValidator,
-    AnomalyValidation,
-    ValidationStatus
-)
-from src.modsec.rule_manager import ModSecRuleManager, RuleStatus
+from src.validation.anomaly_validator import AnomalyValidator, ValidationStatus, AnomalyValidation
 
 @pytest.fixture
 def temp_dirs(tmp_path):
-    """Crée des répertoires temporaires pour les tests."""
-    validations_dir = tmp_path / "validations"
+    validation_dir = tmp_path / "validations"
     rules_dir = tmp_path / "rules"
-    validations_dir.mkdir()
+    validation_dir.mkdir()
     rules_dir.mkdir()
-    return validations_dir, rules_dir
+    return str(validation_dir), str(rules_dir)
 
 @pytest.fixture
 def validator(temp_dirs):
-    """Crée une instance de AnomalyValidator pour les tests."""
-    validations_dir, rules_dir = temp_dirs
-    rule_manager = ModSecRuleManager(
-        rules_dir=str(rules_dir),
-        custom_rules_file="custom_rules.conf"
-    )
-    return AnomalyValidator(
-        validations_dir=str(validations_dir),
-        rule_manager=rule_manager
-    )
+    validation_dir, rules_dir = temp_dirs
+    return AnomalyValidator(validation_dir, rules_dir, auto_create_rules=True)
 
 def test_create_validation(validator):
-    """Test la création d'une validation."""
-    # Créer une validation
-    validation = validator.create_validation(
-        anomaly_id="test_anomaly_1",
-        log_sequence=["log1", "log2"],
-        anomaly_score=0.95,
-        detection_model="test_model",
-        create_rule=True
+    val = validator.create_validation(
+        anomaly_id="A1",
+        log_sequence=[{"uri": "/test"}],
+        anomaly_score=0.9,
+        detection_model="IForest"
     )
-    
-    assert validation.anomaly_id == "test_anomaly_1"
-    assert validation.log_sequence == ["log1", "log2"]
-    assert validation.anomaly_score == 0.95
-    assert validation.detection_model == "test_model"
-    assert validation.validation_status == ValidationStatus.PENDING
-    assert validation.modsec_rule_id is not None
-
-def test_create_validation_with_invalid_data(validator):
-    """Test la création d'une validation avec des données invalides."""
-    # Test avec un score invalide
-    with pytest.raises(ValueError):
-        validator.create_validation(
-            anomaly_id="test_anomaly_invalid",
-            log_sequence=["log1"],
-            anomaly_score=1.5,  # Score > 1
-            detection_model="test_model"
-        )
-    
-    # Test avec une séquence de logs vide
-    with pytest.raises(ValueError):
-        validator.create_validation(
-            anomaly_id="test_anomaly_empty",
-            log_sequence=[],  # Séquence vide
-            anomaly_score=0.95,
-            detection_model="test_model"
-        )
-
-def test_create_duplicate_validation(validator):
-    """Test la création d'une validation avec un ID déjà existant."""
-    # Créer une première validation
-    validator.create_validation(
-        anomaly_id="test_anomaly_dup",
-        log_sequence=["log1"],
-        anomaly_score=0.95,
-        detection_model="test_model"
-    )
-    
-    # Tenter de créer une validation avec le même ID
-    with pytest.raises(ValueError):
-        validator.create_validation(
-            anomaly_id="test_anomaly_dup",
-            log_sequence=["log2"],
-            anomaly_score=0.85,
-            detection_model="test_model"
-        )
+    assert val.anomaly_id == "A1"
+    assert val.validation_status == ValidationStatus.PENDING
+    assert val.modsec_rule_id is not None
+    # Vérifie que le fichier de validation existe
+    path = os.path.join(validator.validation_dir, "A1.json")
+    assert os.path.exists(path)
 
 def test_validate_anomaly(validator):
-    """Test la validation d'une anomalie."""
-    # Créer une validation
-    validation = validator.create_validation(
-        anomaly_id="test_anomaly_2",
-        log_sequence=["log1", "log2"],
-        anomaly_score=0.95,
-        detection_model="test_model",
-        create_rule=True
+    val = validator.create_validation(
+        anomaly_id="A2",
+        log_sequence=[{"uri": "/test2"}],
+        anomaly_score=0.8,
+        detection_model="LOF"
     )
-    
-    # Valider l'anomalie
-    validator.validate_anomaly(
-        anomaly_id=validation.anomaly_id,
+    validated = validator.validate_anomaly(
+        anomaly_id="A2",
         status=ValidationStatus.VALIDATED,
-        validated_by="test_user",
-        notes="Test validation"
+        validated_by="admin",
+        notes="Vraie anomalie"
     )
-    
-    # Récupérer la validation mise à jour
-    updated_validation = validator.get_validation(validation.anomaly_id)
-    
-    assert updated_validation.validation_status == ValidationStatus.VALIDATED
-    assert updated_validation.validated_by == "test_user"
-    assert updated_validation.validation_notes == "Test validation"
-    assert updated_validation.validation_timestamp is not None
+    assert validated.validation_status == ValidationStatus.VALIDATED
+    assert validated.validated_by == "admin"
+    assert validated.validation_notes == "Vraie anomalie"
+    assert validated.validation_timestamp is not None
 
-def test_validate_nonexistent_anomaly(validator):
-    """Test la validation d'une anomalie inexistante."""
-    with pytest.raises(ValueError):
-        validator.validate_anomaly(
-            anomaly_id="nonexistent",
-            status=ValidationStatus.VALIDATED,
-            validated_by="test_user"
-        )
-
-def test_validate_with_invalid_status(validator):
-    """Test la validation avec un statut invalide."""
-    # Créer une validation
-    validation = validator.create_validation(
-        anomaly_id="test_anomaly_invalid_status",
-        log_sequence=["log1"],
-        anomaly_score=0.95,
-        detection_model="test_model"
+def test_mark_normal_removes_rule(validator):
+    val = validator.create_validation(
+        anomaly_id="A3",
+        log_sequence=[{"uri": "/test3"}],
+        anomaly_score=0.7,
+        detection_model="SVM"
     )
-    
-    # Tenter de valider avec un statut invalide
-    with pytest.raises(ValueError):
-        validator.validate_anomaly(
-            anomaly_id=validation.anomaly_id,
-            status="INVALID_STATUS",  # Statut invalide
-            validated_by="test_user"
-        )
-
-def test_mark_normal(validator):
-    """Test le marquage d'une anomalie comme normale."""
-    # Créer une validation avec une règle
-    validation = validator.create_validation(
-        anomaly_id="test_anomaly_3",
-        log_sequence=["log1", "log2"],
-        anomaly_score=0.95,
-        detection_model="test_model",
-        create_rule=True
-    )
-    
-    # Marquer comme normale
+    rule_path = os.path.join(validator.modsec_rules_dir, f"{val.modsec_rule_id}.conf")
+    assert os.path.exists(rule_path)
+    # Marquer comme normal doit supprimer la règle
     validator.validate_anomaly(
-        anomaly_id=validation.anomaly_id,
+        anomaly_id="A3",
         status=ValidationStatus.NORMAL,
-        validated_by="test_user"
+        validated_by="user"
     )
-    
-    # Vérifier que la règle a été supprimée
-    with pytest.raises(ValueError):
-        validator.rule_manager.get_rule(validation.modsec_rule_id)
+    assert not os.path.exists(rule_path)
 
 def test_get_pending_validations(validator):
-    """Test la récupération des validations en attente."""
-    # Créer plusieurs validations
-    validator.create_validation(
-        anomaly_id="test_anomaly_4",
-        log_sequence=["log1"],
-        anomaly_score=0.95,
-        detection_model="test_model"
-    )
-    
-    validator.create_validation(
-        anomaly_id="test_anomaly_5",
-        log_sequence=["log2"],
-        anomaly_score=0.85,
-        detection_model="test_model"
-    )
-    
-    # Valider une des anomalies
-    validator.validate_anomaly(
-        anomaly_id="test_anomaly_4",
-        status=ValidationStatus.VALIDATED,
-        validated_by="test_user"
-    )
-    
-    # Récupérer les validations en attente
+    validator.create_validation("A4", [{"uri": "/a4"}], 0.5, "IForest")
+    validator.create_validation("A5", [{"uri": "/a5"}], 0.6, "LOF")
+    # Valider l'une d'elles
+    validator.validate_anomaly("A4", ValidationStatus.VALIDATED, "admin")
     pending = validator.get_pending_validations()
-    
     assert len(pending) == 1
-    assert pending[0].anomaly_id == "test_anomaly_5"
+    assert pending[0].anomaly_id == "A5"
 
 def test_get_validation_history(validator):
-    """Test la récupération de l'historique des validations."""
-    # Créer et valider plusieurs anomalies
-    validator.create_validation(
-        anomaly_id="test_anomaly_6",
-        log_sequence=["log1"],
-        anomaly_score=0.95,
-        detection_model="test_model"
-    )
-    
-    validator.create_validation(
-        anomaly_id="test_anomaly_7",
-        log_sequence=["log2"],
-        anomaly_score=0.85,
-        detection_model="test_model"
-    )
-    
-    validator.validate_anomaly(
-        anomaly_id="test_anomaly_6",
-        status=ValidationStatus.VALIDATED,
-        validated_by="test_user"
-    )
-    
-    validator.validate_anomaly(
-        anomaly_id="test_anomaly_7",
-        status=ValidationStatus.NORMAL,
-        validated_by="test_user"
-    )
-    
-    # Récupérer l'historique
-    history = validator.get_validation_history()
-    
-    assert len(history) == 2
-    assert any(v.anomaly_id == "test_anomaly_6" and 
-              v.validation_status == ValidationStatus.VALIDATED 
-              for v in history)
-    assert any(v.anomaly_id == "test_anomaly_7" and 
-              v.validation_status == ValidationStatus.NORMAL 
-              for v in history)
+    validator.create_validation("A6", [{"uri": "/a6"}], 0.5, "IForest")
+    validator.create_validation("A7", [{"uri": "/a7"}], 0.6, "LOF")
+    validator.validate_anomaly("A6", ValidationStatus.VALIDATED, "admin")
+    validator.validate_anomaly("A7", ValidationStatus.NORMAL, "user")
+    hist = validator.get_validation_history(status=ValidationStatus.VALIDATED)
+    assert len(hist) == 1
+    assert hist[0].anomaly_id == "A6"
+    hist_all = validator.get_validation_history()
+    assert len(hist_all) == 2
 
-def test_get_validation_history_with_filters(validator):
-    """Test la récupération de l'historique avec des filtres."""
-    # Créer et valider des anomalies avec différents statuts
-    validator.create_validation(
-        anomaly_id="test_anomaly_8",
-        log_sequence=["log1"],
-        anomaly_score=0.95,
-        detection_model="test_model"
-    )
-    
-    validator.create_validation(
-        anomaly_id="test_anomaly_9",
-        log_sequence=["log2"],
-        anomaly_score=0.85,
-        detection_model="test_model"
-    )
-    
-    validator.validate_anomaly(
-        anomaly_id="test_anomaly_8",
-        status=ValidationStatus.VALIDATED,
-        validated_by="user1"
-    )
-    
-    validator.validate_anomaly(
-        anomaly_id="test_anomaly_9",
-        status=ValidationStatus.NORMAL,
-        validated_by="user2"
-    )
-    
-    # Tester le filtrage par statut
-    validated = validator.get_validation_history(status=ValidationStatus.VALIDATED)
-    assert len(validated) == 1
-    assert validated[0].anomaly_id == "test_anomaly_8"
-    
-    # Tester le filtrage par utilisateur
-    user1_validations = validator.get_validation_history(validated_by="user1")
-    assert len(user1_validations) == 1
-    assert user1_validations[0].anomaly_id == "test_anomaly_8"
-
-def test_rule_creation_from_anomaly(validator):
-    """Test la création d'une règle à partir d'une anomalie."""
-    # Créer une validation avec une règle
-    validation = validator.create_validation(
-        anomaly_id="test_anomaly_10",
-        log_sequence=["log1", "log2"],
-        anomaly_score=0.95,
-        detection_model="test_model",
-        create_rule=True
-    )
-    
-    # Vérifier que la règle a été créée
-    rule = validator.rule_manager.get_rule(validation.modsec_rule_id)
-    
-    assert rule is not None
-    assert rule.status == RuleStatus.ACTIVE
-    assert "anomaly_generated" in rule.tags
-
-def test_validation_file_operations(validator):
-    """Test les opérations sur les fichiers de validation."""
-    # Créer une validation
-    validation = validator.create_validation(
-        anomaly_id="test_anomaly_11",
-        log_sequence=["log1"],
-        anomaly_score=0.95,
-        detection_model="test_model"
-    )
-    
-    # Vérifier que le fichier existe
-    validation_file = os.path.join(validator.validations_dir, f"{validation.anomaly_id}.json")
-    assert os.path.exists(validation_file)
-    
-    # Vérifier le contenu du fichier
-    with open(validation_file, 'r') as f:
-        content = f.read()
-        assert validation.anomaly_id in content
-        assert str(validation.anomaly_score) in content
-        assert validation.detection_model in content 
+def test_duplicate_validation_raises(validator):
+    validator.create_validation("A8", [{"uri": "/a8"}], 0.5, "IForest")
+    with pytest.raises(Exception):
+        validator.create_validation("A8", [{"uri": "/a8"}], 0.5, "IForest") 

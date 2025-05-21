@@ -92,16 +92,17 @@ class ModSecRuleManager:
             content: Contenu du fichier de règles
         """
         # Pattern pour extraire les règles
-        rule_pattern = r'# Rule: (.*?)\nSecRule (.*?) "id:(\d+),'
+        rule_pattern = r'# Rule: (.*?)\n# Description: (.*?)\n# Created: (.*?)\n# Created by: (.*?)\n# Status: (.*?)\n# Tags: (.*?)\nSecRule (.*?) "id:(\d+),'
         
         for match in re.finditer(rule_pattern, content, re.DOTALL):
             name = match.group(1)
-            rule_content = match.group(2)
-            rule_id = match.group(3)
-            
-            # Extraire la description
-            desc_match = re.search(r'msg:\'(.*?)\'', rule_content)
-            description = desc_match.group(1) if desc_match else ""
+            description = match.group(2)
+            created_at = datetime.fromisoformat(match.group(3))
+            created_by = match.group(4)
+            status = RuleStatus(match.group(5))
+            tags = [tag.strip() for tag in match.group(6).split(',') if tag.strip()]
+            rule_content = match.group(7)
+            rule_id = match.group(8)
             
             # Créer la règle
             rule = ModSecRule(
@@ -109,10 +110,10 @@ class ModSecRuleManager:
                 name=name,
                 description=description,
                 content=rule_content,
-                status=RuleStatus.ACTIVE,
-                created_at=datetime.now(),
-                created_by="system",
-                tags=[],
+                status=status,
+                created_at=created_at,
+                created_by=created_by,
+                tags=tags,
                 test_results={},
                 related_rules=[]
             )
@@ -408,8 +409,10 @@ SecRule {rule.content} "id:{rule.rule_id},
             
             # Copier le fichier de règles
             with open(self.custom_rules_file, 'r') as src:
+                content = src.read()
+                logger.debug(f"Contenu sauvegardé: {content}")
                 with open(backup_file, 'w') as dst:
-                    dst.write(src.read())
+                    dst.write(content)
                     
             logger.info(f"Sauvegarde créée: {backup_file}")
             return backup_file
@@ -430,16 +433,22 @@ SecRule {rule.content} "id:{rule.rule_id},
             if not os.path.exists(backup_file):
                 raise ValueError(f"Fichier de sauvegarde non trouvé: {backup_file}")
                 
-            # Créer une sauvegarde avant restauration
-            self.backup_rules()
+            # S'assurer que le répertoire des règles existe
+            os.makedirs(os.path.dirname(self.custom_rules_file), exist_ok=True)
             
             # Restaurer la sauvegarde
-            with open(backup_file, 'r') as src:
-                with open(self.custom_rules_file, 'w') as dst:
-                    dst.write(src.read())
+            with open(backup_file, 'r', encoding='utf-8') as src:
+                content = src.read()
+                logger.debug(f"Contenu restauré: {content}")
+                with open(self.custom_rules_file, 'w', encoding='utf-8') as dst:
+                    dst.write(content)
                     
+            # Vider le dictionnaire des règles
+            self.rules.clear()
+            
             # Recharger les règles
             self._load_rules()
+            logger.debug(f"Règles après restauration: {self.rules}")
             
             logger.info(f"Sauvegarde restaurée: {backup_file}")
             

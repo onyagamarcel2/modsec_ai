@@ -127,7 +127,13 @@ class AnomalyValidator:
 
         Returns:
             La validation créée
+
+        Raises:
+            ValueError: Si une validation avec le même ID existe déjà
         """
+        if anomaly_id in self.validations:
+            raise ValueError(f"Une validation avec l'ID {anomaly_id} existe déjà")
+
         validation = AnomalyValidation(
             anomaly_id=anomaly_id,
             timestamp=datetime.now(),

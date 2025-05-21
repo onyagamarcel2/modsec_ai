@@ -195,10 +195,10 @@ class ModelUpdater:
                 from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
                 
                 performance[name] = {
-                    'precision': precision_score(vectors, predictions),
-                    'recall': recall_score(vectors, predictions),
-                    'f1': f1_score(vectors, predictions),
-                    'auc': roc_auc_score(vectors, scores)
+                    'precision': precision_score(vectors, predictions, average='micro'),
+                    'recall': recall_score(vectors, predictions, average='micro'),
+                    'f1': f1_score(vectors, predictions, average='micro'),
+                    'auc': roc_auc_score(vectors, scores, average='micro')
                 }
                 
             # Mettre à jour l'historique des performances

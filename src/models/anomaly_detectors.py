@@ -14,13 +14,13 @@ logger = logging.getLogger(__name__)
 class BaseAnomalyDetector:
     """Classe de base pour les détecteurs d'anomalies."""
     
-    def __init__(self, name):
+    def __init__(self, name=None):
         """Initialise le détecteur.
         
         Args:
-            name (str): Nom du détecteur
+            name (str, optional): Nom du détecteur. Si None, utilise le nom de la classe.
         """
-        self.name = name
+        self.name = name or self.__class__.__name__.lower()
         self.model = None
         self.scaler = StandardScaler()
         self.pca = None
@@ -85,7 +85,10 @@ class BaseAnomalyDetector:
         """
         try:
             model_data = joblib.load(path)
-            detector = cls(model_data['model'])
+            # Créer une nouvelle instance sans passer le modèle en paramètre
+            detector = cls()
+            # Restaurer l'état complet
+            detector.model = model_data['model']
             detector.scaler = model_data['scaler']
             detector.pca = model_data['pca']
             return detector
