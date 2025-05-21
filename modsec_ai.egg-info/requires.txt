@@ -1,0 +1,4 @@
+PyQt5>=5.15.0
+httpx>=0.28.0
+pytest>=8.0.0
+pytest-cov>=6.0.0

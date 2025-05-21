@@ -1,0 +1,61 @@
+# Configuration ModSecurity
+modsecurity:
+  log_path: /var/log/modsec_audit.log
+  rotation_pattern: "modsec_audit.log.*"
+  max_file_size: 10485760  # 10MB
+
+# Configuration de la détection
+detection:
+  threshold: 0.8
+  window_size: 1000
+  update_interval: 3600  # 1 heure
+  min_samples: 1000
+  contamination: 0.1
+
+# Configuration du modèle
+model:
+  vectorizer:
+    type: "word2vec"
+    size: 100
+    window: 5
+    min_count: 1
+  detector:
+    type: "isolation_forest"
+    n_estimators: 100
+    max_samples: "auto"
+    contamination: 0.1
+
+# Configuration des alertes
+alerts:
+  email:
+    enabled: true
+    smtp_server: smtp.gmail.com
+    smtp_port: 587
+    sender: alerts@votre-domaine.com
+    recipients:
+      - admin@votre-domaine.com
+  slack:
+    enabled: false
+    webhook_url: ""
+  webhook:
+    enabled: false
+    url: ""
+
+# Configuration de la base de données
+database:
+  type: "sqlite"
+  path: "data/knowledge_base.db"
+  buffer_size: 1000
+
+# Configuration de l'API
+api:
+  host: "0.0.0.0"
+  port: 8000
+  debug: false
+  workers: 4
+
+# Configuration du dashboard
+dashboard:
+  port: 8501
+  theme: "dark"
+  refresh_interval: 5  # secondes 

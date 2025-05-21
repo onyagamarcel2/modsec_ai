@@ -1,0 +1,53 @@
+{
+    "notifications": {
+        "email": {
+            "enabled": true,
+            "smtp_server": "smtp.gmail.com",
+            "smtp_port": 587,
+            "username": "your-email@gmail.com",
+            "password": "your-app-password",
+            "from_addr": "your-email@gmail.com",
+            "to_addrs": [
+                "admin@example.com",
+                "security@example.com"
+            ]
+        },
+        "slack": {
+            "enabled": true,
+            "webhook_url": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
+            "channel": "#security-alerts"
+        },
+        "webhook": {
+            "enabled": true,
+            "url": "https://your-monitoring-system.com/api/alerts",
+            "method": "POST",
+            "headers": {
+                "Authorization": "Bearer YOUR-API-KEY",
+                "Content-Type": "application/json"
+            }
+        }
+    },
+    "alert_rules": {
+        "critical": {
+            "score_threshold": 0.9,
+            "notification_channels": ["email", "slack", "webhook"]
+        },
+        "high": {
+            "score_threshold": 0.8,
+            "notification_channels": ["email", "slack"]
+        },
+        "medium": {
+            "score_threshold": 0.6,
+            "notification_channels": ["slack"]
+        },
+        "low": {
+            "score_threshold": 0.4,
+            "notification_channels": []
+        }
+    },
+    "alert_aggregation": {
+        "enabled": true,
+        "window_size": 300,
+        "max_alerts_per_window": 10
+    }
+} 
